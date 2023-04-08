@@ -1,42 +1,47 @@
-import React, { ChangeEvent, SyntheticEvent } from "react";
 import Button from "react-bootstrap/Button";
+import Form from "react-bootstrap/Form";
+import React from "react";
 
 let peerConnection: RTCPeerConnection;
 
 export default function InputCard() {
-  const [formData, setFormData] = React.useState({
-    sdp: "",
-  });
+
+  const queryParameters = new URLSearchParams(window.location.search);
+
+  if(queryParameters.has("file")) {
+    //TODO Get offer from server using file id from query parameters, and post answer to server
+  }
+  
 
   async function handleSubmit() {
-    let answer = JSON.parse(formData.sdp);
-
-    addAnswer(answer);
-  }
-
-  function handleFormChange(event: any) {
-    setFormData((pFormData) => {
-      return {
-        ...pFormData,
-        [event.target.name]: event.target.value,
-      };
-    });
+    //Check if query parameters contain file
+    if (queryParameters.has("file")) {
+      //TODO Download file
+    } else {
+      //TODO Check if file is selected
+      //TODO Create offer and send to server
+      createOffer();
+    }
   }
 
   return (
     <div className="input-card">
-      <div className="input-group">
-        <input
-          type="text"
-          placeholder="Link"
-          className="form-control"
-          name="sdp"
-          onChange={handleFormChange}
-        />
-      </div>
-      <div className="submit-button">
-        <Button onClick={handleSubmit}>Upload</Button>
-      </div>
+
+      {
+        //Check if query parameters contain file
+        queryParameters.has("file") ? (
+          <h2>📄 : File.txt</h2>
+        )
+         : (
+          <Form.Control type="file" id="fileInput" />
+        )
+
+      }
+     <Button type="submit" id="submitButton" onSubmit={handleSubmit}>
+        {
+          queryParameters.has("file") ? "Download ⬇️" : "Upload ⬆️"
+        }
+      </Button>
     </div>
   );
 }
@@ -61,7 +66,7 @@ const createOffer = async () => {
 
     peerConnection.onicecandidate = async (event) => {
     
-        console.log(JSON.stringify(peerConnection.localDescription));
+        console.log(peerConnection.localDescription);
 
         //TODO Send SDP offer to server and create room with link and filename, then send link to user
     };

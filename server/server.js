@@ -1,28 +1,12 @@
-import express from "express";
-import bodyParser from "body-parser";
+import ws from 'ws';
 
-//Init express
-const app = express();
-
-//Use bodyparser to parse the incoming json
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-let rooms = {};
-
-//On post request
-app.post("/", async (req, res) => {
-
-    //TODO Add offer to database with filename and return roomID
-
-});
-
-app.get("/", async (req, res) => {
-    const roomID = req.query.id;
-
-    //TODO Get offer and filename from roomID
-
-});
-
-//Run express on port 8080
-app.listen(8080, () => console.log("Server running on port 8080"));
+/*
+    * User submits file
+    * Connects to websocket server and sends offer and filename
+    * Websocket server sends link with room id back to user
+    * User awaits answer
+    * When second user connects to link, they are sent the offer and filename
+    * Second user sends answer to websocket server
+    * Websocket server sends answer to first user
+    * When answer is sent the room is deleted
+*/
