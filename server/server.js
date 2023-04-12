@@ -1,51 +1,64 @@
 import {WebSocketServer} from 'ws';
 
 /*
-    * User submits file
-    * Connects to websocket server and sends offer and filename
-    * Websocket server sends link with room id back to user
-    * User awaits answer
-    * When second user connects to link, they are sent the offer and filename
-    * Second user sends answer to websocket server
-    * Websocket server sends answer to first user
-    * When answer is sent the room is deleted
+    -Client requests offer using id
+    -
 */
 
 //Create websocket server
 const wsServer = new WebSocketServer({ port: 8080 });
 
+var hosts = {};
+var clients = {};
+
 
 wsServer.on('connection', (ws) => {
-    ws.id = wsServer.getUniqueID();
-    console.log('Client connected, assigning id:' , ws.id);
 
     //On message from client
     ws.on('message', (data) => {
         const message = JSON.parse(data);
 
-        if (message.type === 'offer') {
-            console.log(message.sdp);
-        }
+        console.log(message);
+        
 
-        else if (message.type === 'answer') {
-            //Add answer to room
-        }
+        if(message.type === 'offer') {
+            //Store offer
+            console.log("Host received");
+            hosts[message.id] = ws;
+            ws.offer = message.offer;
 
-        else if (message.type === "request") {
-            //Request offer from first user
+        } else if(message.type === 'answer') {
+            //Store answer
+            ws.answer = message.answer;
 
+            //Send answer to host
+            hosts[message.id].send(JSON.stringify({
+                type: 'answer',
+                answer: message.answer
+            }));
 
+        } else if(message.type === "requestOffer") {
+            clients[message.id] = ws;
+            console.log("Client received");
+            //Send offer to client
+            clients[message.id].send(JSON.stringify({
+                type: 'offer',
+                offer: hosts[message.id].offer
+            }));
+        } else if (message.type === "candidate") {
+            //Send candidate to host
+            hosts[message.id].send(JSON.stringify({
+                type: 'candidate',
+                candidate: message.candidate
+            }));
+            //Send candidate to client
+            clients[message.id].send(JSON.stringify({
+                type: 'candidate',
+                candidate: message.candidate
+            }));
             
         }
 
     });
 });
 
-wsServer.getUniqueID = () => {
-    var s4 = () => {
-        return Math.floor((1 + Math.random()) * 0x10000)
-            .toString(16)
-            .substring(1);
-    };
-    return s4() + s4() + '-' + s4();
-}

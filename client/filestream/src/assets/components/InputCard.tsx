@@ -4,59 +4,128 @@ import React from "react";
 
 let peerConnection: RTCPeerConnection;
 let signalingSocket: WebSocket;
+const iceServers = [
+  {
+    urls: [
+      "stun:stun.l.google.com:19302",
+      "stun:stun1.l.google.com:19302",
+      "stun:stun2.l.google.com:19302",
+    ],
+  },
+];
+
+let id;
 
 export default function InputCard() {
   const queryParameters = new URLSearchParams(window.location.search);
+  id = new URLSearchParams(window.location.search).get("file");
 
-  if (queryParameters.has("file")) {
-    //TODO Get offer from server using file id from query parameters, and post answer to server
+
+  if (!signalingSocket) {
+    signalingSocket = new WebSocket("ws://localhost:8080");
+    peerConnection = new RTCPeerConnection({ iceServers });
+
+    signalingSocket.onmessage = async (data) => {
+      console.log(JSON.parse(data.data));
+      switch (JSON.parse(data.data).type) {
+        case "offer":
+          console.log("Offer received");
+          peerConnection.setRemoteDescription(
+            new RTCSessionDescription({
+              type: "offer",
+              sdp: JSON.parse(data.data).offer,
+            })
+          );
+
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer).then(() => {
+            signalingSocket.send(
+              JSON.stringify({
+                type: "answer",
+                answer: answer.sdp,
+                id: id,
+              })
+            );
+          });
+
+          break;
+        case "answer":
+          console.log("Answer received");
+          peerConnection.setRemoteDescription(
+            new RTCSessionDescription({
+              type: "answer",
+              sdp: JSON.parse(data.data).answer,
+            })
+          );
+          break;
+
+        case "candidate":
+
+          peerConnection.addIceCandidate(
+            new RTCIceCandidate(JSON.parse(data.data).candidate)
+          ).then(() => {
+            console.log("Candidate added");
+          });
+          break;
+      }
+
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          signalingSocket.send(
+            JSON.stringify({
+              type: "candidate",
+              candidate: event.candidate,
+              id: id,
+            })
+          );
+        }
+      };
+    };
   }
 
   async function handleSubmit() {
-
     //If signaling socket is not defined, create it
-    if (!signalingSocket) {
-      signalingSocket = new WebSocket("ws://localhost:8080");
-    }
 
+    const dataChannel = peerConnection.createDataChannel("dataChannel");
 
-    //Check if query parameters contain file
-    if (queryParameters.has("file")) {
-      //TODO Send request to get offer
-      //TODO Create answer and send to server
-    } else {
-
-      //On connection with signaling server
-      signalingSocket.onopen = async () => {
-        signalingSocket.onmessage = async (data) => {
-          //Parse message
-          const message = JSON.parse(data.data);
-
-          if(message.type === "request") {
-            createPeerConnection();
-
-            peerConnection.onicecandidate = async (event) => {
-              if (event.candidate) {
-                //Send offer to server
-                signalingSocket.send(JSON.stringify({
-                  type: "offer",
-                  sdp: peerConnection.localDescription,
-                }));
-              }
-            }
-
-            //Create offer
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-          }
-
-          if(data.type === "answer") {
-            //TODO Set remote description to answer
-          }
-
-        };
+    peerConnection.ondatachannel = (event) => {
+      const dataChannel = event.channel;
+      dataChannel.onmessage = (event) => {
+        console.log(event.data);
       };
+    };
+
+
+    if (queryParameters.has("file")) {
+      //Request offer from server
+
+      id = new URLSearchParams(window.location.search).get("file");
+      signalingSocket.send(
+        JSON.stringify({
+          type: "requestOffer",
+          id: id,
+        })
+      );
+    } else {
+      //Create offer
+      id = getUniqueID();
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer).then(() => {
+        signalingSocket.send(
+          JSON.stringify({
+            type: "offer",
+            offer: offer.sdp,
+            id: id,
+          })
+        );
+        console.log("Link: " + window.location.href + "?file=" + id);
+      });
     }
+
+    dataChannel.onopen = () => {
+      dataChannel.send("Hello world");
+    };
+    
   }
 
   return (
@@ -76,19 +145,11 @@ export default function InputCard() {
   );
 }
 
-const createPeerConnection = () => {
-  //Create peer connection using Google's public STUN server
-  peerConnection = new RTCPeerConnection({
-    iceServers: [
-      {
-        urls: [
-          "stun:stun.l.google.com:19302",
-          "stun:stun1.l.google.com:19302",
-          "stun:stun2.l.google.com:19302",
-        ],
-      },
-    ],
-  });
-
-  const dataChannel = peerConnection.createDataChannel("dataChannel");
-};
+function getUniqueID() {
+  var s4 = () => {
+    return Math.floor((1 + Math.random()) * 0x10000)
+      .toString(16)
+      .substring(1);
+  };
+  return s4() + s4() + "-" + s4();
+}
