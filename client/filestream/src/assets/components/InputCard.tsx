@@ -14,15 +14,15 @@ const iceServers = [
   },
 ];
 
-let id;
-
 export default function InputCard() {
   const queryParameters = new URLSearchParams(window.location.search);
-  id = new URLSearchParams(window.location.search).get("file");
 
   //Init state
   const [state, setState] = React.useState({
-    linkGenereated : false 
+    linkGenereated : false,
+    downloading : true,
+    downloadProgress : 0,
+    id: new URLSearchParams(window.location.search).get("file")
   }); 
 
 
@@ -48,7 +48,7 @@ export default function InputCard() {
               JSON.stringify({
                 type: "answer",
                 answer: answer.sdp,
-                id: id,
+                id: state.id,
               })
             );
           });
@@ -80,7 +80,7 @@ export default function InputCard() {
             JSON.stringify({
               type: "candidate",
               candidate: event.candidate,
-              id: id,
+              id: state.id,
             })
           );
         }
@@ -104,28 +104,42 @@ export default function InputCard() {
     if (queryParameters.has("file")) {
       //Request offer from server
 
-      id = new URLSearchParams(window.location.search).get("file");
+      setState((stateData) => {
+        return {
+          ...stateData,
+          id : new URLSearchParams(window.location.search).get("file")
+        }
+      });
       signalingSocket.send(
         JSON.stringify({
           type: "requestOffer",
-          id: id,
+          id: state.id,
         })
       );
     } else {
       //Create offer
-      id = getUniqueID();
+
+      setState((stateData) => {
+        return {
+          ...stateData,
+          id : getUniqueID()
+        }
+      });
+
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer).then(() => {
         signalingSocket.send(
           JSON.stringify({
             type: "offer",
             offer: offer.sdp,
-            id: id,
+            id: state.id,
           })
         );
-
-        setState({
-          linkGenereated : true
+        setState((stateData) => {
+          return {
+            ...stateData,
+            linkGenereated : true
+          }
         });
       });
     }
@@ -152,13 +166,26 @@ export default function InputCard() {
        state.linkGenereated ? (
         <div className="alert alert-success" role="alert">
           <h4 className="alert-heading">Link creation successfull!</h4>
-          <p>The file is now available at <a href={window.location.href + "?file=" + id}>{window.location.href + "?file=" + id} </a> </p> 
+          <p>The file is now available at <a href={window.location.href + "?file=" + state.id}>{window.location.href + "?file=" + state.id} </a> </p> 
           <hr/>
           <p className="mb-0">Please note that you have to stay on this page until the file has been fully downloaded!</p>
         </div>
         ) : null 
+      }
+
+      {
+        queryParameters.has("file") && state.downloading ? (
+        <div className="alert alert-success" role="alert">
+          <h4 className="alert-heading">Downloading your file...</h4>
+          <p> Progressbar </p> 
+          <hr/>
+          <p className="mb-0">Current Speed : 433.2 kbit/s - ETA: 23 s</p>
+        </div>
+        ) : null 
 
       }
+
+
       <Button type="submit" id="submitButton" onClick={handleSubmit}>
         {queryParameters.has("file") ? "Download ⬇️" : "Upload ⬆️"}
       </Button>
