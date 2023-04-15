@@ -1,5 +1,5 @@
 import Button from "react-bootstrap/Button";
-import Form from "react-bootstrap/Form";
+import { Alert, Form } from "react-bootstrap";
 import React from "react";
 
 let peerConnection: RTCPeerConnection;
@@ -19,6 +19,11 @@ let id;
 export default function InputCard() {
   const queryParameters = new URLSearchParams(window.location.search);
   id = new URLSearchParams(window.location.search).get("file");
+
+  //Init state
+  const [state, setState] = React.useState({
+    linkGenereated : false 
+  }); 
 
 
   if (!signalingSocket) {
@@ -118,7 +123,10 @@ export default function InputCard() {
             id: id,
           })
         );
-        console.log("Link: " + window.location.href + "?file=" + id);
+
+        setState({
+          linkGenereated : true
+        });
       });
     }
 
@@ -138,9 +146,24 @@ export default function InputCard() {
           <Form.Control type="file" id="fileInput" />
         )
       }
+
+
+      {
+       state.linkGenereated ? (
+        <div className="alert alert-success" role="alert">
+          <h4 className="alert-heading">Link creation successfull!</h4>
+          <p>The file is now available at <a href={window.location.href + "?file=" + id}>{window.location.href + "?file=" + id} </a> </p> 
+          <hr/>
+          <p className="mb-0">Please note that you have to stay on this page until the file has been fully downloaded!</p>
+        </div>
+        ) : null 
+
+      }
       <Button type="submit" id="submitButton" onClick={handleSubmit}>
         {queryParameters.has("file") ? "Download ⬇️" : "Upload ⬆️"}
       </Button>
+
+
     </div>
   );
 }
