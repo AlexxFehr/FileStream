@@ -4,6 +4,7 @@ import InputCard from './InputCard'
 import "bootstrap/dist/css/bootstrap.min.css"
 
 import "../css/InputCard.css"
+import Topbar from './TopBar'
 
 
 export default function App() {
@@ -11,6 +12,7 @@ export default function App() {
 
   return (
     <div className="App">
+      <Topbar />
       <InputCard />
     </div>
   )

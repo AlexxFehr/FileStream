@@ -17,6 +17,8 @@ const iceServers = [
 export default function InputCard() {
   const queryParameters = new URLSearchParams(window.location.search);
 
+  //TODO Rewrite upload and download components as seperate components
+
   //Init state
   const [state, setState] = React.useState({
     linkGenereated : false,
@@ -27,8 +29,13 @@ export default function InputCard() {
 
 
   if (!signalingSocket) {
+
     signalingSocket = new WebSocket("ws://localhost:8080");
     peerConnection = new RTCPeerConnection({ iceServers });
+
+    signalingSocket.onerror = (error) => {
+      //TODO Show error message
+    }
 
     signalingSocket.onmessage = async (data) => {
       console.log(JSON.parse(data.data));
@@ -110,6 +117,8 @@ export default function InputCard() {
           id : new URLSearchParams(window.location.search).get("file")
         }
       });
+
+
       signalingSocket.send(
         JSON.stringify({
           type: "requestOffer",
@@ -165,7 +174,7 @@ export default function InputCard() {
       {
        state.linkGenereated ? (
         <div className="alert alert-success" role="alert">
-          <h4 className="alert-heading">Link creation successfull!</h4>
+          <h4 className="alert-heading">Link creation successful!</h4>
           <p>The file is now available at <a href={window.location.href + "?file=" + state.id}>{window.location.href + "?file=" + state.id} </a> </p> 
           <hr/>
           <p className="mb-0">Please note that you have to stay on this page until the file has been fully downloaded!</p>
